@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROTOCOLO DE AMIZADE // ARQUIVO CLASSIFICADO</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<!-- ================= BOOT / SPLASH SCREEN ================= -->
+<div id="bootScreen" class="boot-screen">
+  <div class="boot-scanline"></div>
+  <div class="boot-logo-wrap">
+    <img src="assets/logo.png" alt="Logo" class="boot-logo">
+  </div>
+  <div class="boot-text">INICIALIZANDO PROTOCOLO<span class="boot-dots"><span>.</span><span>.</span><span>.</span></span></div>
+  <div class="boot-bar"><div class="boot-bar-fill"></div></div>
+  <div class="boot-sub mono">carregando arquivos criptografados</div>
+</div>
+<!-- ================= LOGIN SCREEN (Firebase Auth) ================= -->
+<div id="loginScreen" class="login-screen" style="display:none;">
+  <div class="login-card">
+    <img src="assets/logo.png" alt="Logo" class="login-logo">
+    <div class="login-eyebrow">acesso restrito</div>
+    <h2 class="login-title">Identifique-se</h2>
+    <p class="login-sub">Somente membros autorizados podem acessar este arquivo.</p>
+    <form id="loginForm" class="login-form">
+      <label class="login-label">E-mail</label>
+      <input type="email" id="loginEmail" class="login-input" placeholder="voce@exemplo.com" required autocomplete="email">
+      <label class="login-label">Senha</label>
+      <input type="password" id="loginPassword" class="login-input" placeholder="••••••••" required autocomplete="current-password">
+      <div id="loginError" class="login-error"></div>
+      <button type="submit" id="loginSubmitBtn" class="login-btn primary">Entrar</button>
+    </form>
+    <button id="toggleModeBtn" class="login-link">Ainda não tem conta? Criar acesso</button>
+    <div class="login-divider"><span>ou</span></div>
+    <button id="googleLoginBtn" class="login-btn google">Entrar com Google</button>
+  </div>
+</div>
+<!-- ================= CONTEÚDO PRINCIPAL (só aparece logado) ================= -->
+<div id="appContent" style="display:none;">
+<!-- Toast estilo Steam: última conquista desbloqueada -->
+<div id="unlockToast" class="unlock-toast" style="display:none;">
+  <div class="unlock-toast-icon" id="unlockToastIcon">🏆</div>
+  <div class="unlock-toast-body">
+    <div class="unlock-toast-label mono">conquista mais recente</div>
+    <div class="unlock-toast-title" id="unlockToastTitle">—</div>
+  </div>
+</div>
+<header class="hud">
+  <div class="hud-eyebrow">arquivo restrito <span class="blink">●</span> nível de acesso: limitado</div>
+  <button id="logoutBtn" class="logout-btn mono">sair ⏻</button>
+  <span id="adminBadge" class="admin-badge mono" style="display:none;">★ ADMIN</span>
+  <h1 class="title">Protocolo de <span>Amizade</span></h1>
+  <p class="hud-sub">Classificação oficial, dossiês pessoais e conquistas desbloqueáveis das duas equipes registradas.</p>
+  <div class="my-profile-bar">
+    <div class="my-profile-avatar" id="myProfileAvatar"></div>
+    <div class="my-profile-info">
+      <div class="my-profile-label mono">seu perfil</div>
+      <div class="my-profile-name" id="myProfileName">—</div>
+    </div>
+    <button id="changePhotoBtn" class="my-profile-btn mono">trocar foto</button>
+    <input type="file" id="profilePhotoInput" accept="image/*" style="display:none;">
+  </div>
+</header>
+<!-- ================= RANKING ================= -->
+<section id="ranking-section">
+  <div class="sec-head">
+    <span class="num">01</span>
+    <div>
+      <h2>Lista de Amigos</h2>
+      <div class="desc">Ordenado por proximidade. Nº1 masculino e Nº1 feminino recebem destaque de prioridade.</div>
+    </div>
+  </div>
+  <div class="rank-list" id="rankList"></div>
+</section>
+<!-- ================= TEAMS / GAME ================= -->
+<section id="teams-section">
+  <div class="sec-head">
+    <span class="num">02</span>
+    <div>
+      <h2>Equipes &amp; Conquistas</h2>
+      <div class="desc">Modo cooperativo. Selecione uma equipe para ver o mural de troféus e escalar o dossiê de pessoas.</div>
+    </div>
+  </div>
+  <div class="team-tabs" id="teamTabs"></div>
+  <div class="ach-grid" id="achGrid"></div>
+  <div class="ach-admin-form" id="achAdminForm" style="display:none;">
+    <div class="ach-admin-title mono">★ modo admin — nova conquista</div>
+    <div class="ach-admin-row">
+      <input id="newAchIcon" class="ach-admin-input icon" placeholder="🏆" maxlength="4">
+      <input id="newAchTitle" class="ach-admin-input" placeholder="Título da conquista">
+    </div>
+    <input id="newAchDesc" class="ach-admin-input full" placeholder="Descrição">
+    <div class="ach-admin-row">
+      <label class="ach-admin-check"><input type="checkbox" id="newAchUnlocked"> já desbloqueada</label>
+      <button id="newAchAddBtn" class="ach-admin-btn">Adicionar conquista</button>
+    </div>
+  </div>
+  <!-- Painel de sugestões pendentes (só o admin vê, e só se houver alguma) -->
+  <div class="sugg-pending" id="suggPendingPanel" style="display:none;">
+    <div class="sugg-pending-title mono">★ sugestões pendentes</div>
+    <div id="suggPendingList"></div>
+  </div>
+  <!-- Formulário de sugestão de conquista (qualquer usuário logado) -->
+  <div class="sugg-form" id="suggForm">
+    <div class="sugg-form-title mono">💡 sugerir conquista para esta equipe</div>
+    <div class="ach-admin-row">
+      <input id="suggIcon" class="ach-admin-input icon" placeholder="🏆" maxlength="4">
+      <input id="suggTitle" class="ach-admin-input" placeholder="Título da conquista">
+    </div>
+    <input id="suggDesc" class="ach-admin-input full" placeholder="Descrição">
+    <div class="ach-admin-row">
+      <label class="ach-admin-check"><input type="checkbox" id="suggUnlocked"> já aconteceu</label>
+      <button id="suggAddBtn" class="sugg-form-btn">Enviar sugestão</button>
+    </div>
+  </div>
+  <div class="charsel">
+    <div class="charsel-grid" id="charGrid"></div>
+    <div class="charsel-detail" id="charDetail"></div>
+  </div>
+</section>
+<!-- ================= ATIVIDADE RECENTE ================= -->
+<section id="activity-section">
+  <div class="sec-head">
+    <span class="num">03</span>
+    <div>
+      <h2>Atividade Recente</h2>
+      <div class="desc">Mural com os últimos acontecimentos: conquistas desbloqueadas, sugestões e aprovações.</div>
+    </div>
+  </div>
+  <div class="activity-feed" id="activityFeed"></div>
+</section>
+<footer>
+  FIM DA TRANSMISSÃO
+  <div class="footer-credits mono">Criado por Gustavo Chimello · Consultoria de dados: William Furquim</div>
+</footer>
+</div>
+<!-- Firebase (compat) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="Script.js"></script>
+</body>
+</html>
