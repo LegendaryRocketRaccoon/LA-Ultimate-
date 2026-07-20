@@ -198,7 +198,7 @@ let FRIENDS = [
   // ---------- RANK 1 (empate) — Olavo primeiro, depois Eduarda ----------
   { id:1, rank:1, name:"Olavo Xavier Vieira", gender:"M", team:"bigbang", isBest:true,
     role:"Melhor Amigo / Irmão", membership:"Membro Fundador",
-    codename:"The True Gamer / AppleJuice / Cream Boy",
+    codename:"The True Gamer , AppleJuice , Cream Boy, Tickle Master",
     classe:"Membro Fundador",
     email:"olavoxavier038@gmail.com",
     dob:"05/03", sexo:"Masculino", tipoSanguineo:"O-", corOlhos:"Castanhos", height:"1,77", status:"Ativo", idNum:"MM01",
