@@ -41,11 +41,11 @@
 </div>
 <!-- ================= CONTEÚDO PRINCIPAL (só aparece logado) ================= -->
 <div id="appContent" style="display:none;">
-<!-- Toast estilo Steam: última conquista desbloqueada -->
+<!-- Toast estilo Steam: última conquista desbloqueada / carta encontrada -->
 <div id="unlockToast" class="unlock-toast" style="display:none;">
   <div class="unlock-toast-icon" id="unlockToastIcon">🏆</div>
   <div class="unlock-toast-body">
-    <div class="unlock-toast-label mono">conquista mais recente</div>
+    <div class="unlock-toast-label mono" id="unlockToastLabel">conquista mais recente</div>
     <div class="unlock-toast-title" id="unlockToastTitle">—</div>
   </div>
 </div>
@@ -54,7 +54,7 @@
   <button id="logoutBtn" class="logout-btn mono">sair ⏻</button>
   <span id="adminBadge" class="admin-badge mono" style="display:none;">★ ADMIN</span>
   <h1 class="title">Protocolo de <span>Amizade</span></h1>
-  <p class="hud-sub">Classificação oficial, dossiês pessoais e conquistas desbloqueáveis das duas equipes registradas.</p>
+  <p class="hud-sub">Classificação oficial, dossiês pessoais e conquistas desbloqueáveis das duas equipes registradas. <span class="hidden-egg" data-egg="0"></span></p>
   <div class="my-profile-bar">
     <div class="my-profile-avatar" id="myProfileAvatar"></div>
     <div class="my-profile-info">
@@ -71,7 +71,7 @@
     <span class="num">01</span>
     <div>
       <h2>Lista de Amigos</h2>
-      <div class="desc">Ordenado por proximidade. Nº1 masculino e Nº1 feminino recebem destaque de prioridade.</div>
+      <div class="desc">Ordenado por proximidade. Nº1 masculino e Nº1 feminino recebem destaque de prioridade. <span class="hidden-egg" data-egg="1"></span></div>
     </div>
   </div>
   <div class="rank-list" id="rankList"></div>
@@ -82,7 +82,7 @@
     <span class="num">02</span>
     <div>
       <h2>Equipes &amp; Conquistas</h2>
-      <div class="desc">Modo cooperativo. Selecione uma equipe para ver o mural de troféus e escalar o dossiê de pessoas.</div>
+      <div class="desc">Modo cooperativo. Selecione uma equipe para ver o mural de troféus e escalar o dossiê de pessoas. <span class="hidden-egg" data-egg="4"></span></div>
     </div>
   </div>
   <div class="team-tabs" id="teamTabs"></div>
@@ -133,8 +133,20 @@
   </div>
   <div class="activity-feed" id="activityFeed"></div>
 </section>
+<!-- ================= CARTAS COLECIONÁVEIS (EASTER EGGS) ================= -->
+<section id="cards-section">
+  <div class="sec-head">
+    <span class="num">04</span>
+    <div>
+      <h2>Cartas Colecionáveis</h2>
+      <div class="desc">Ícones secretos foram escondidos por este arquivo. Encontre o ícone de um membro para desbloquear sua carta de infância.</div>
+    </div>
+  </div>
+  <div class="cards-progress mono" id="cardsProgress"></div>
+  <div class="cards-grid" id="cardsGrid"></div>
+</section>
 <footer>
-  FIM DA TRANSMISSÃO
+  FIM DA TRANSMISSÃO <span class="hidden-egg" data-egg="3"></span>
   <div class="footer-credits mono">Criado por Gustavo Chimello · Consultoria de dados: William Furquim</div>
 </footer>
 </div>
