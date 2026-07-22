@@ -598,6 +598,14 @@ footer{padding:34px 5vw; color:var(--txt-faint); font-family:'Share Tech Mono',m
 .hidden-egg:hover{opacity:0.85; filter:grayscale(0); cursor:pointer; transform:scale(1.25);}
 .hidden-egg.found{opacity:0.9; filter:grayscale(0); cursor:default; text-shadow:0 0 8px rgba(255,204,0,0.6);}
 .hidden-egg.found:hover{transform:none;}
+.card-trigger{cursor:pointer; text-decoration:underline dotted; text-decoration-color:var(--yellow); text-underline-offset:3px;}
+.card-trigger:hover{color:var(--yellow);}
+.void-trigger{display:inline-block; margin-left:8px; font-size:18px; text-decoration:none; opacity:.55;}
+.bio-icon-trigger{display:inline-block; margin-left:6px; font-size:15px; text-decoration:none; opacity:.35;}
+.hidden-card-icon{display:inline-block; margin-left:6px; opacity:.16; filter:grayscale(1); text-decoration:none; transition:opacity .2s ease, filter .2s ease, transform .2s ease;}
+.hidden-card-icon img{width:18px; height:18px; display:block; object-fit:contain;}
+.hidden-card-icon:hover{opacity:.9; filter:grayscale(0); transform:scale(1.2);}
+.hide-after-unlock{transition:opacity .2s ease, filter .2s ease, transform .2s ease;}
 /* ============================================================
    CARTAS COLECIONÁVEIS (fotos de infância)
 ============================================================ */
