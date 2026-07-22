@@ -59,6 +59,7 @@ let isAdmin = false;
 let achievementsInitialized = false;
 let profilesInitialized = false;
 let friendOverridesInitialized = false;
+let eggUnlocksInitialized = false;
 let currentUserEmail = null;
 // A tela de boot fica visível por, no mínimo, ~2.2s (duração da barra de
 // carregamento), mesmo que o Firebase responda mais rápido que isso.
@@ -95,6 +96,10 @@ auth.onAuthStateChanged(user => {
   if (isLoggedIn && !friendOverridesInitialized) {
     friendOverridesInitialized = true;
     listenFriendOverrides();
+  }
+  if (isLoggedIn && !eggUnlocksInitialized) {
+    eggUnlocksInitialized = true;
+    listenEggUnlocks();
   }
   revealAfterBoot();
 });
@@ -165,13 +170,17 @@ function traduzErroFirebase(err){
    - Se pertence às duas:   teams: ["bigbang", "raccoon"]
    NOVOS CAMPOS POR AMIGO:
    - hobbies: []                       → lista de hobbies favoritos
-     (ex: ["D&D","Videogames","Leitura"] — vazio mostra "dados
-     ainda não catalogados")
    - firstAppearance: { quando, descricao }
-     → "First Appearance" estilo ficha de HQ. "quando" é a edição
-     (data exata como "22/08" ou temporada como "Temporada 2") e
-     "descricao" é o relato do primeiro encontro, escrito por você.
-     Campos vazios aparecem como "—" / texto de pendência.
+     → "First Appearance" estilo ficha de HQ.
+   - lembrancas: []                    → LEMBRANÇA DO DIA. Lista de
+     frases sobre o membro; a cada dia uma diferente aparece no
+     dossiê, rotacionando automaticamente (dia 1 mostra a 1ª, dia 2
+     a 2ª, e quando acaba volta pro início). Quanto mais frases,
+     mais dias sem repetir. Exemplos:
+       "A música favorita do membro é ______."
+       "Curiosidade: o membro gosta de ______."
+       "No dia __/__ o membro realizou ______."
+     Lista vazia mostra "nenhum registro catalogado".
 ============================================================ */
 const TEAMS = {
   bigbang: {
@@ -206,12 +215,18 @@ let FRIENDS = [
     stats:{lealdade:100,humor:97,confiabilidade:100, Carisma : 95, Habilidades_Sociais: 79, Maturidade:80, Criatividade:87, Energia_Social:78, Disposicao:74, Nivel_De_Fofura:35},
     qualidades:["Empatia","Inteligência","Humor","Cultura","Talento","Aprende rápido","Energia social"],
     defeitos:["Às vezes indisciplinado"],
-    hobbies:["Jogos", "DnD", "Música", "Leitura de HQs e Livros", "Filmes/Séries", "Desenhar"], // preencher depois, ex: ["Videogames","Música"]
-    firstAppearance:{ quando:"22/08/2024 - 1ª Temporada", descricao:"Meu primeiro dia na turma de Auxiliar de Estatística. Saionara nos colocou no mesmo grupo." }, // única data exata conhecida
-    neuro:{status:"possivel", detalhes:"TDA e/ou Altas Habilidades"}, // preencher depois: qual(is) possibilidade(s)
+    hobbies:["Jogos", "DnD", "Música", "Leitura de HQs e Livros", "Filmes/Séries", "Desenhar"],
+    firstAppearance:{ quando:"22/08/2024 - 1ª Temporada", descricao:"Meu primeiro dia na turma de Auxiliar de Estatística. Saionara nos colocou no mesmo grupo." },
+    lembrancas:[
+      "A música favorita do Olavo é Jigsaw Falling Into Place de Radiohead.",
+      "Olavo gosta de gansos e patos.",
+      "O personagem favorito do Olavo é o Hellboy.",
+      "Primeiro contato entre Olavo e Gustavo foi no dia 22/08/2024."
+    ],
+    neuro:{status:"possivel", detalhes:"TDA e/ou Altas Habilidades"},
     accent:"#ffcc00",
     photo:"fotos/olavox.jpeg",
-    actorPhoto:"", actorName:"" // "elenco": foto e nome do ator/atriz escalado(a) para esse papel
+    actorPhoto:"", actorName:""
   },
   { id:2, rank:1, name:"Eduarda Tonet", gender:"F", team:"raccoon", highPriority:true,
     role:"Melhor Amiga", membership:"Membro Fundador",
@@ -220,11 +235,12 @@ let FRIENDS = [
     dob:"25/10", sexo:"Feminino", tipoSanguineo:"B+", corOlhos:"Verdes", height:"1,73", status:"Ativo", idNum:"MF01",
     bio:".",
     stats:{lealdade:99,humor:80,confiabilidade:99, Carisma : 79, Habilidades_Sociais: 88, Maturidade:84, Criatividade:79, Energia_Social:80, Disposicao:84, Nivel_De_Fofura:40},
-    hobbies:["Futebol", "Música", "Filmes/Séries", "Desenhar"], // preencher depois
-    firstAppearance:{ quando:"Prequel", descricao:"A primeira pessoa com quem falei na turma do ensino médio. Perguntei se aquela era a minha turma, e ela respondeu que sim." }, // ex: quando:"Temporada 1"
+    hobbies:["Futebol", "Música", "Filmes/Séries", "Desenhar"],
+    firstAppearance:{ quando:"Prequel", descricao:"A primeira pessoa com quem falei na turma do ensino médio. Perguntei se aquela era a minha turma, e ela respondeu que sim." },
+    lembrancas:[],
     accent:"#1fe90d",
     photo:"",
-    actorPhoto:"", actorName:"" // "elenco": foto e nome do ator/atriz escalado(a) para esse papel
+    actorPhoto:"", actorName:""
   },
   // ---------- RESTANTE DO RANKING (2º ao 10º) ----------
   { id:3, rank:2, name:"William de Oliveira Camillo Furquim", gender:"M", team:"bigbang",
@@ -236,11 +252,17 @@ let FRIENDS = [
     stats:{lealdade:96,humor:94,confiabilidade:96, Carisma : 93, Habilidades_Sociais: 95, Maturidade:80, Criatividade:77, Energia_Social:70, Disposicao:80, Nivel_De_Fofura:30},
     qualidades:["Calmo, não se estressa à toa","Evita conflitos","Persistente","Compreensivo","O que mais se esforça","Empático","Cuida dos amigos"],
     defeitos:["Jogar LOL (Olavo também)","Pode-se irritá-lo (raramente)"],
-    hobbies:["Futebol", "Jogos/LOL", "Música", "Leitura", "Filmes/Séries"], // preencher depois
-    firstAppearance:{ quando:"1ª Temporada", descricao:"Em nosso primeiro contato ele veio até mim e o Olavo perguntando se alguém tinha falado em Darth Vader. Ele também aproveitou o fato de eu ter mencionado, na apresentação da Saionara, que meu vilão favorito era o Dr. Destino." }, // ex: quando:"Temporada 1"
+    hobbies:["Futebol", "Jogos/LOL", "Música", "Leitura", "Filmes/Séries"],
+    firstAppearance:{ quando:"1ª Temporada", descricao:"Em nosso primeiro contato ele veio até mim e o Olavo perguntando se alguém tinha falado em Darth Vader. Ele também aproveitou o fato de eu ter mencionado, na apresentação da Saionara, que meu vilão favorito era o Dr. Destino." },
+    lembrancas:[
+      "A música favorita do William é Still Loving You de Scorpions.",
+      "Curiosidade: William gosta de Lady Gaga.",
+      "Amanda e William começaram a namorar dia 10/03/2025.",
+      "William já foi campeão de Xadrez."
+    ],
     accent:"#3d3c3c",
-    photo:"fotos/william.jpeg", // ex: "fotos/william.jpg" (deixe vazio para usar o avatar gerado)
-    actorPhoto:"", actorName:"" // "elenco": foto e nome do ator/atriz escalado(a) para esse papel
+    photo:"fotos/william.jpeg",
+    actorPhoto:"", actorName:""
   },
   { id:4, rank:3, name:"Lucas Miyaki da Cruz", gender:"M", team:"bigbang",
     role:"Amigo 3", membership:"Membro Fundador",
@@ -251,11 +273,16 @@ let FRIENDS = [
     stats:{lealdade:89,humor:70,confiabilidade:89, Carisma : 74, Habilidades_Sociais: 80, Maturidade:77, Criatividade:77, Energia_Social:76, Disposicao:76, Nivel_De_Fofura:75},
     qualidades:["Generoso","Respeitoso","Humilde","Agradável","Bom anfitrião","Inteligente","Precavido financeiramente"],
     defeitos:["Pouca Confiança","Pouca Autoestima"],
-    hobbies:["Jogos", "Música", "Origami"], // preencher depois
-    firstAppearance:{ quando:"22/08/2024 - 1ª Temporada", descricao:"Saionara misturou os grupos, meu e do Olavo com o do Lucas. Quando mencionei que gostava da DC, a Ketlen desaprovou, e ele disse que era para deixar eu continuar gostando dela." }, // ex: quando:"Temporada 1"
+    hobbies:["Jogos", "Música", "Origami"],
+    firstAppearance:{ quando:"22/08/2024 - 1ª Temporada", descricao:"Saionara misturou os grupos, meu e do Olavo com o do Lucas. Quando mencionei que gostava da DC, a Ketlen desaprovou, e ele disse que era para deixar eu continuar gostando dela." },
+    lembrancas:[
+      "O jogo favorito do Lucas é Clair Obscure Expedition 33.",
+      "A série favorita do Lucas é Gravity Falls.",
+      //"No dia __/__, Lucas realizou ______."
+    ],
     accent:"#3dc015",
-    photo:"", // ex: "fotos/lucas.jpg" (deixe vazio para usar o avatar gerado)
-    actorPhoto:"", actorName:"" // "elenco": foto e nome do ator/atriz escalado(a) para esse papel
+    photo:"",
+    actorPhoto:"", actorName:""
   },
   { id:5, rank:4, name:"Pedro Henrique", gender:"M", team:"solo",
     role:"Amigo 4", membership:"Membro",
@@ -263,11 +290,12 @@ let FRIENDS = [
     dob:"11/04", sexo:"Masculino", tipoSanguineo:"O+", corOlhos:"Castanhos", status:"Ativo", idNum:"AM04",
     bio:".",
     stats:{lealdade:90,humor:82,confiabilidade:90, Carisma : 85, Habilidades_Sociais: 92, Maturidade:78, Criatividade:74, Energia_Social:87, Disposicao:79, Nivel_De_Fofura:25},
-    hobbies:["Música", "Leitura", "Filmes/Séries", "Festas"], // preencher depois
+    hobbies:["Música", "Leitura", "Filmes/Séries", "Festas"],
     firstAppearance:{ quando:"Prequel", descricao:"Primeiro contato no curso de Logística do SENAI, durante o primeiro trabalho em grupo de apresentação." },
+    lembrancas:[],
     accent:"#8b8a86",
-    photo:"", // ex: "fotos/pedro.jpg" (deixe vazio para usar o avatar gerado)
-    actorPhoto:"", actorName:"" // "elenco": foto e nome do ator/atriz escalado(a) para esse papel
+    photo:"",
+    actorPhoto:"", actorName:""
   },
   { id:6, rank:5, name:"Igor Vieira Prux", gender:"M", team:"raccoon",
     role:"Amigo 5", membership:"Membro Fundador",
@@ -275,24 +303,26 @@ let FRIENDS = [
     dob:"13/06", sexo:"Masculino", tipoSanguineo:"O-", corOlhos:"Castanhos", status:"Ativo", idNum:"AM05",
     bio:".",
     stats:{lealdade:87,humor:90,confiabilidade:87, Carisma : 90, Habilidades_Sociais: 94, Maturidade:80, Criatividade:79, Energia_Social:80, Disposicao:72, Nivel_De_Fofura:10},
-    hobbies:["Música", "Filmes/Séries", "Desenhar", "Moto"], // preencher depois
+    hobbies:["Música", "Filmes/Séries", "Desenhar", "Moto"],
     firstAppearance:{ quando:"Prequel", descricao:"A professora o colocou no mesmo grupo que Eduarda, Bárbara e eu; depois, começamos a fazer outros trabalhos com essa formação de equipe." },
+    lembrancas:[],
     accent:"#8600bb",
-    photo:"", // ex: "fotos/igor.jpg" (deixe vazio para usar o avatar gerado)
-    actorPhoto:"", actorName:"" // "elenco": foto e nome do ator/atriz escalado(a) para esse papel
+    photo:"",
+    actorPhoto:"", actorName:""
   },
   { id:7, rank:6, name:"Bárbara Ferreira", gender:"F", team:"raccoon",
     role:"Amiga 6", membership:"Membro Fundador",
     classe:"Membro Fundador",
-    neuro:{status:"possivel", detalhes:"TDAH"}, // preencher depois: qual(is) possibilidade(s)
+    neuro:{status:"possivel", detalhes:"TDAH"},
     dob:"13/11", sexo:"Feminino", tipoSanguineo:"O-", corOlhos:"Castanhos", status:"Ativo", idNum:"AF02",
     bio:".",
     stats:{lealdade:86,humor:86,confiabilidade:86, Carisma : 95, Habilidades_Sociais: 97, Maturidade:72, Criatividade:70, Energia_Social:87, Disposicao:70, Nivel_De_Fofura:20},
-    hobbies:["Música", "Alguns livros", "Filmes/Séries", "Festas"], // preencher depois
+    hobbies:["Música", "Alguns livros", "Filmes/Séries", "Festas"],
     firstAppearance:{ quando:"Prequel", descricao:"Primeiro contato em um trabalho em grupo de português, no qual a Eduarda também estava. Ela perguntou se eu queria que ela cortasse uma folha para o trabalho; foi a segunda pessoa que falei depois de Eduarda." },
+    lembrancas:[],
     accent:"#f806d8",
-    photo:"", // ex: "fotos/barbara.jpg" (deixe vazio para usar o avatar gerado)
-    actorPhoto:"", actorName:"" // "elenco": foto e nome do ator/atriz escalado(a) para esse papel
+    photo:"",
+    actorPhoto:"", actorName:""
   },
   { id:8, rank:7, name:"Amanda Jaguella da Silva", gender:"F", team:"bigbang",
     role:"Amiga 7", membership:"Membro Principal",
@@ -304,24 +334,26 @@ let FRIENDS = [
     qualidades:["Decidida","Pontual","Esperta","Corajosa","Criativa","Engraçada","Interessante","Planejadora","Precavida","Dedicada","Delicada","Se veste bem"],
     qualidadesNota:"(fora as qualidades como namorada do William)",
     defeitos:["Preocupada","Emocional"],
-    hobbies:[], // preencher depois
-    firstAppearance:{ quando:"2ª Temporada", descricao:"Os primeiros contatos ocorreram quando eu a acompanhava com o William. Depois que ele concluiu seu arco tentando namorá-la, ela passou a integrar a equipe." }, // entrou no grupo na segunda temporada
+    hobbies:[],
+    firstAppearance:{ quando:"2ª Temporada", descricao:"Os primeiros contatos ocorreram quando eu a acompanhava com o William. Depois que ele concluiu seu arco tentando namorá-la, ela passou a integrar a equipe." },
+    lembrancas:["Amanda e William começaram a namorar dia 10/03/2025."],
     accent:"#aa2800",
-    photo:"", // ex: "fotos/amanda.jpg" (deixe vazio para usar o avatar gerado)
-    actorPhoto:"", actorName:"" // "elenco": foto e nome do ator/atriz escalado(a) para esse papel
+    photo:"",
+    actorPhoto:"", actorName:""
   },
-  { id:9, rank:8, name:"Arthur Fiorese de Andrade", gender:"M", team:"solo", // agrupado em "Sem Equipe" — visível, sem sistema de conquistas
+  { id:9, rank:8, name:"Arthur Fiorese de Andrade", gender:"M", team:"solo",
     role:"Amigo 8", membership:"TI",
     classe:"TI",
     dob:"11/09", sexo:"Masculino", tipoSanguineo:"", corOlhos:"Castanhos", status:"Ativo", idNum:"AM08",
     bio:".",
     stats:{lealdade:90,humor:92,confiabilidade:90, Carisma : 96, Habilidades_Sociais: 96, Maturidade:78, Criatividade:86, Energia_Social:80, Disposicao:79, Nivel_De_Fofura:25},
-    hobbies:["Jogos", "DnD", "Música", "Leitura de HQs e Livros", "Pixel Art"], // preencher depois
+    hobbies:["Jogos", "DnD", "Música", "Leitura de HQs e Livros", "Pixel Art"],
     firstAppearance:{ quando:"3ª Temporada", descricao:"Primeiro contato ao iniciar meu estágio na TI da Câmara de Vereadores." },
-    neuro:{status:"confirmada", detalhes:"TDAH e Bipolaridade"}, // preencher depois: quais são as confirmadas
+    lembrancas:[],
+    neuro:{status:"confirmada", detalhes:"TDAH e Bipolaridade"},
     accent:"#5fe4a6",
-    photo:"", // ex: "fotos/arthur.jpg" (deixe vazio para usar o avatar gerado)
-    actorPhoto:"", actorName:"" // "elenco": foto e nome do ator/atriz escalado(a) para esse papel
+    photo:"",
+    actorPhoto:"", actorName:""
   },
   { id:10, rank:9, name:"Victor Menegat", gender:"M", team:"raccoon",
     role:"Amigo 9", membership:"Membro",
@@ -329,16 +361,14 @@ let FRIENDS = [
     dob:"", sexo:"Masculino", tipoSanguineo:"B+", corOlhos:"Castanhos", status:"Ativo", idNum:"AM09",
     bio:".",
     stats:{lealdade:77,humor:79,confiabilidade:77, Carisma : 86, Habilidades_Sociais: 90, Maturidade:78, Criatividade:75, Energia_Social:70, Disposicao:72, Nivel_De_Fofura:12},
-    hobbies:["Música", "Filmes/Séries"], // preencher depois
+    hobbies:["Música", "Filmes/Séries"],
     firstAppearance:{ quando:"Prequel", descricao:"Eduarda já o conhecia; ele chegou à nossa turma no último ano do ensino médio e, com o tempo, passou a ter mais contato com a equipe, tornando-se um membro honorário." },
+    lembrancas:[],
     accent:"#c70b0b",
-    photo:"", // ex: "fotos/victor.jpg" (deixe vazio para usar o avatar gerado)
-    actorPhoto:"", actorName:"" // "elenco": foto e nome do ator/atriz escalado(a) para esse papel
+    photo:"",
+    actorPhoto:"", actorName:""
   },
   // ---------- VOCÊ — membro das duas equipes ----------
-  // Edite os campos abaixo com os seus dados reais. "rank" ficou vazio de
-  // propósito: assim você aparece nas DUAS equipes, mas fora do Top 10
-  // (é só colocar um número de 1 a 10 aqui se quiser entrar no ranking).
   { id:0, rank:null, name:"Gustavo Chimello", gender:"M", teams:["bigbang","raccoon"],
     role:"Membro Fundador TBBH / FR Inc.", membership:"Membro Fundador",
     codename:"Legendary Blue Raccoon / Pirate Raccoon / Detective Raccoon, Robô, Backend das Trevas, Vigilante, Menino Maluquinho, Voz do Google, Gênio, Avatar, Autistinha, Capitão América, Robin, O Backend, O Fofo do Grupo",
@@ -349,12 +379,19 @@ let FRIENDS = [
     stats:{lealdade:100,humor:80,confiabilidade:100, Carisma : 77, Habilidades_Sociais: 42, Maturidade:80, Criatividade:86, Energia_Social:60, Disposicao:76, Nivel_De_Fofura:80},
     qualidades:["Mais inteligente do grupo","Carismático","Fofo", "Empatia","Humor","Mantém a palavra","Memória","Empenhado","Reservado","Seletivo","Cultura","Companheiro"],
     defeitos:["Habilidades sociais","Conexões emocionais","Contato familiar"],
-    hobbies:["Filmes/Séries", "Leitura de HQs e Livros", "Música", "Jogos", "Edição", "Escrever", "Desenhar", "DnD"], // preencher depois, ex: ["D&D","Programação"]
-    firstAppearance:{ quando:"Blue Beetle #1", descricao:"The Road So Far." }, // você é o protagonista — edite à vontade
-    neuro:{status:"confirmada", detalhes:"Autismo e Altas Habilidades"}, // preencher depois: quais são as confirmadas
+    hobbies:["Filmes/Séries", "Leitura de HQs e Livros", "Música", "Jogos", "Edição", "Escrever", "Desenhar", "DnD"],
+    firstAppearance:{ quando:"Blue Beetle #1", descricao:"The Road So Far." },
+    lembrancas:[
+      "A música favorita do Gustavo é Adagio in D Minor de John Murphy.",
+      "Primeiro contato entre Olavo e Gustavo foi no dia 22/08/2024.",
+      "Gustavo já foi medalhista de ouro na OBA (Olimpíada Brasileira de Astronomia e Astronáutica).",
+      "Gustavo recebeu menção honrosa na ONC (Olimpíada Nacional de Ciências).",
+      "Os personagens favoritos do Gustavo são o Senhor Destino e o Questão.",
+    ],
+    neuro:{status:"confirmada", detalhes:"Autismo e Altas Habilidades"},
     accent:"#2be0c8",
-    photo:"", // ex: "fotos/voce.jpg" (deixe vazio para usar o avatar gerado)
-    actorPhoto:"", actorName:"" // "elenco": foto e nome do ator/atriz escalado(a) para esse papel
+    photo:"",
+    actorPhoto:"", actorName:""
   },
   // ---------- MEMBROS EXTRAS (fora do Top 10, aparecem só nas equipes) ----------
   // Conta de teste para o admin experimentar a visão de um usuário comum
@@ -369,10 +406,11 @@ let FRIENDS = [
     stats:{lealdade:89,humor:99,confiabilidade:85, Maturidade:79, Criatividade:86, Energia_Social:80, Disposicao:80, Nivel_De_Fofura:94},
     hobbies:["Colecionar próteses"],
     firstAppearance:{ quando:"Marvel Preview #7 (1976)", descricao:"Primeiro contato com ele ao salvar o multiverso de um demônio interdimensional." },
+    lembrancas:[],
     neuro:{status:"confirmada", detalhes:"Guaxinim geneticamente modificado."},
     accent:"#8b5cf6",
-    photo:"", // ex: "fotos/rocket.jpg" (deixe vazio para usar o avatar gerado)
-    actorPhoto:"", actorName:"" // "elenco": foto e nome do ator/atriz escalado(a) para esse papel
+    photo:"",
+    actorPhoto:"", actorName:""
   },
   /*{ id:12, rank:11, name:"Kaio Manfro da Silva", gender:"M", team:"raccoon",
     role:"Membro Honorário", membership:"Membro Honorário",
@@ -396,11 +434,137 @@ let FRIENDS = [
   },
   */
 ];
-
 if (authResolved && isLoggedIn) {
   renderAll();
 }
-
+/* ============================================================
+   EASTER EGGS — ÍCONES ESCONDIDOS + CARTAS DE INFÂNCIA
+   Como funciona:
+   - Cada membro abaixo tem um ícone secreto escondido em algum
+     canto do site (os pontos de esconderijo são os <span
+     class="hidden-egg" data-egg="ID"> no index.html — o data-egg
+     é o friendId; pra mudar o esconderijo, é só mover o span).
+   - O ícone fica quase invisível (bem apagado) e só revela a cor
+     quando o mouse passa em cima. Ao CLICAR no ícone de um membro,
+     quem clicou desbloqueia a carta de infância DAQUELE membro na
+     seção 04 — cada usuário tem sua própria coleção (salva no
+     Firestore por e-mail).
+   - O admin já enxerga todas as cartas desbloqueadas, pra testar.
+   PLACEHOLDERS PRA VOCÊ TROCAR:
+   - icon: o emoji/símbolo escondido ou o caminho de uma imagem.
+   - childPhoto: caminho da foto de infância (ex: "fotos/crianca_olavo.jpg").
+   ESCONDERIJOS ATUAIS (mova os spans no index.html se quiser):
+   - Gustavo (0): fim do subtítulo do header
+   - Olavo (1): descrição da seção 01 (Lista de Amigos)
+   - Lucas (4): descrição da seção 02 (Equipes & Conquistas)
+   - William (3): "FIM DA TRANSMISSÃO" no rodapé
+   REGRA DO FIRESTORE (adicione junto das outras):
+   match /eggUnlocks/{email} {
+     allow read: if request.auth != null &&
+       request.auth.token.email in
+       ['chimellogustavo17@gmail.com','olavoxavier038@gmail.com',
+        'williamfurquim@hotmail.com','oimperiocontraataca7@gmail.com',
+        'lumimiyaki@gmail.com','amandajaguella@gmail.com','eduardatonet25@gmail.com'];
+     allow write: if request.auth != null &&
+       request.auth.token.email == email;
+   }
+============================================================ */
+const EASTER_EGGS = [
+  { friendId:0, firstName:"Gustavo", icon:"fotos/Raccoon_Goose.png", childPhoto:"fotos/crianca_gustavo.jpeg" },
+  { friendId:1, firstName:"Olavo",   icon:"fotos/Geese.png", childPhoto:"fotos/crianca_olavo.jpeg" },
+  { friendId:3, firstName:"William", icon:"fotos/capybara.png", childPhoto:"fotos/crianca_william.jpeg" },
+  { friendId:4, firstName:"Lucas",   icon:"fotos/red_panda.png", childPhoto:"fotos/crianca_lucas.jpeg" }
+];
+let EGG_UNLOCKS = []; // friendIds desbloqueados pelo usuário logado
+function eggDocRef(email){ return db.collection("eggUnlocks").doc(email.toLowerCase()); }
+function listenEggUnlocks(){
+  if (!currentUserEmail) return;
+  eggDocRef(currentUserEmail).onSnapshot(snap=>{
+    const data = snap.data();
+    EGG_UNLOCKS = (data && Array.isArray(data.unlockedIds)) ? data.unlockedIds : [];
+    renderEggs();
+    renderCards();
+  }, err => console.warn("Erro ao sincronizar cartas desbloqueadas", err));
+}
+// Admin já tem tudo desbloqueado (pra testar); os demais só o que acharam.
+function isEggUnlocked(friendId){
+  return isAdmin || EGG_UNLOCKS.includes(friendId);
+}
+function unlockEgg(friendId){
+  if (!currentUserEmail) return;
+  if (EGG_UNLOCKS.includes(friendId)) return;
+  const egg = EASTER_EGGS.find(e => e.friendId === friendId);
+  if (!egg) return;
+  eggDocRef(currentUserEmail).set({
+    unlockedIds: firebase.firestore.FieldValue.arrayUnion(friendId)
+  }, { merge: true }).catch(err => console.warn("Não foi possível salvar a carta", err));
+  const friend = FRIENDS.find(f => f.id === friendId);
+  showToast("🃏", "carta desbloqueada", `Infância de ${egg.firstName}`);
+  const team = friend ? (friendTeams(friend)[0] || "bigbang") : "bigbang";
+  logActivity(team, "unlocked", `encontrou o ícone secreto e desbloqueou a carta de <b>${egg.firstName}</b> 🃏`);
+}
+// Preenche os spans .hidden-egg do HTML com o ícone de cada membro e
+// liga o clique. Ícones já encontrados ficam permanentemente coloridos.
+function renderEggs(){
+  document.querySelectorAll(".hidden-egg").forEach(el=>{
+    const friendId = parseInt(el.dataset.egg);
+    const egg = EASTER_EGGS.find(e => e.friendId === friendId);
+    if (!egg) { el.style.display = "none"; return; }
+    if (egg.icon.includes("/")) {
+      el.innerHTML = `<img src="${egg.icon}" alt="Ícone secreto de ${egg.firstName}" loading="lazy">`;
+    } else {
+      el.textContent = egg.icon;
+    }
+    el.classList.toggle("found", isEggUnlocked(friendId));
+    if (!el.dataset.bound) {
+      el.dataset.bound = "1";
+      el.addEventListener("click", ()=> unlockEgg(friendId));
+    }
+  });
+}
+// Seção 04: galeria de cartas. Bloqueada = verso com "?"; desbloqueada =
+// foto de infância com moldura dourada e brilho de colecionável.
+function renderCards(){
+  const grid = document.getElementById("cardsGrid");
+  const progress = document.getElementById("cardsProgress");
+  if (!grid) return;
+  const unlockedCount = EASTER_EGGS.filter(e => isEggUnlocked(e.friendId)).length;
+  progress.innerHTML = `coleção: <b>${unlockedCount}/${EASTER_EGGS.length}</b> cartas desbloqueadas${isAdmin ? ` <span style="color:var(--yellow)">★ visão de admin — tudo liberado</span>` : ""}`;
+  grid.innerHTML = EASTER_EGGS.map(egg=>{
+    if (isEggUnlocked(egg.friendId)) {
+      return `
+      <div class="friend-card unlocked">
+        <div class="card-photo">
+          <img src="${egg.childPhoto}" alt="${egg.firstName} quando criança" loading="lazy"
+            onerror="this.parentElement.innerHTML='<div class=\\'card-photo-empty\\'>🖼️</div>'">
+        </div>
+        <div class="card-footer">
+          <div class="card-name">${egg.firstName}</div>
+          <div class="card-edition">edição infância · colecionável</div>
+        </div>
+      </div>`;
+    }
+    return `
+    <div class="friend-card locked">
+      <div class="card-q">?</div>
+      <div class="card-hint">carta bloqueada<br>encontre o ícone escondido de ${egg.firstName}</div>
+    </div>`;
+  }).join("");
+}
+/* ============================================================
+   TOAST GENÉRICO (conquistas e cartas)
+============================================================ */
+function showToast(icon, label, title){
+  const toast = document.getElementById("unlockToast");
+  document.getElementById("unlockToastIcon").textContent = icon || "🏆";
+  document.getElementById("unlockToastLabel").textContent = label || "conquista mais recente";
+  document.getElementById("unlockToastTitle").textContent = title || "—";
+  toast.style.display = "none";
+  void toast.offsetWidth; // reinicia a animação CSS
+  toast.style.display = "flex";
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(()=>{ toast.style.display = "none"; }, 6800);
+}
 /* ============================================================
    ATENÇÃO: este objeto agora é só a "SEMENTE" inicial.
    A partir do primeiro login do admin, os dados de verdade passam
@@ -498,6 +662,7 @@ function listenAchievements(){
 async function initAchievementsSync(){
   await seedAchievementsIfNeeded();
   listenAchievements();
+  listenReactions();
   listenSuggestions();
   listenActivity();
 }
@@ -532,19 +697,43 @@ function addAchievement(team, achievement){
   logActivity(team, "added", `adicionou a conquista <b>${full.title}</b>`);
   if (full.unlocked) notifyUnlock(team, full);
 }
+/* ============================================================
+   REAÇÕES — coleção separada pra TODOS poderem reagir
+   As reações moram na coleção "reactions" (um documento por
+   equipe), e não mais dentro de "achievements". Assim todos os
+   membros podem escrever reações sem ganharem permissão de
+   mexer nas conquistas em si (que continuam só do admin).
+   Formato do documento: { [idDaConquista]: { [emoji]: [emails] } }
+   REGRA DO FIRESTORE (adicione junto das outras):
+   match /reactions/{team} {
+     allow read, write: if request.auth != null &&
+       request.auth.token.email in
+       ['chimellogustavo17@gmail.com','olavoxavier038@gmail.com',
+        'williamfurquim@hotmail.com','oimperiocontraataca7@gmail.com',
+        'lumimiyaki@gmail.com','amandajaguella@gmail.com','eduardatonet25@gmail.com'];
+   }
+============================================================ */
+let REACT_LIVE = { bigbang:{}, raccoon:{} };
+function reactDocRef(team){ return db.collection("reactions").doc(team); }
+function listenReactions(){
+  ACHIEVEMENT_TEAMS.forEach(team=>{
+    reactDocRef(team).onSnapshot(snap=>{
+      REACT_LIVE[team] = snap.data() || {};
+      if (isLoggedIn) renderAchievements();
+    }, err => console.warn("Erro ao sincronizar reações de", team, err));
+  });
+}
 // Qualquer usuário logado pode reagir com um emoji a uma conquista.
+// arrayUnion/arrayRemove só mexem no próprio e-mail, então dois membros
+// reagindo ao mesmo tempo não sobrescrevem a reação um do outro.
 function reactToAchievement(team, achievementId, emoji){
   if (!currentUserEmail) return;
-  const list = (ACH_LIVE[team] || []).map(a=>{
-    if (a.id !== achievementId) return a;
-    const reactions = { ...(a.reactions || {}) };
-    const current = new Set(reactions[emoji] || []);
-    if (current.has(currentUserEmail)) current.delete(currentUserEmail);
-    else current.add(currentUserEmail);
-    reactions[emoji] = Array.from(current);
-    return { ...a, reactions };
-  });
-  achDocRef(team).set({ list });
+  const current = ((REACT_LIVE[team] || {})[achievementId] || {})[emoji] || [];
+  const op = current.includes(currentUserEmail)
+    ? firebase.firestore.FieldValue.arrayRemove(currentUserEmail)
+    : firebase.firestore.FieldValue.arrayUnion(currentUserEmail);
+  reactDocRef(team).set({ [achievementId]: { [emoji]: op } }, { merge: true })
+    .catch(err => console.warn("Não foi possível salvar a reação", err));
 }
 /* ============================================================
    NOTIFICAÇÃO POR E-MAIL (extensão "Trigger Email" do Firebase)
@@ -748,11 +937,7 @@ function maybeShowLastUnlockToast(){
   if (!all.length) return;
   const mostRecent = all.reduce((best, a) => (a.unlockedAt > best.unlockedAt ? a : best), all[0]);
   toastShownThisSession = true;
-  const toast = document.getElementById("unlockToast");
-  document.getElementById("unlockToastIcon").textContent = mostRecent.icon || "🏆";
-  document.getElementById("unlockToastTitle").textContent = mostRecent.title;
-  toast.style.display = "flex";
-  setTimeout(()=> { toast.style.display = "none"; }, 6800);
+  showToast(mostRecent.icon || "🏆", "conquista mais recente", mostRecent.title);
 }
 /* ============================================================
    PERFIS DE USUÁRIO (foto de perfil)
@@ -1099,7 +1284,11 @@ function renderAchievements(){
 }
 const QUICK_REACTIONS = ["👍","❤️","😂","🎉"];
 function renderReactions(a){
-  const reactions = a.reactions || {};
+  // Reações agora vêm da coleção "reactions" (separada das conquistas,
+  // pra todos os membros poderem reagir). Obs: reações antigas, salvas
+  // dentro da própria conquista, não são migradas — só o admin conseguia
+  // salvá-las, então o histórico perdido é mínimo.
+  const reactions = (REACT_LIVE[activeTeam] || {})[a.id] || {};
   return `<div class="ach-reactions">${QUICK_REACTIONS.map(emoji=>{
     const emails = reactions[emoji] || [];
     const mine = currentUserEmail && emails.includes(currentUserEmail);
@@ -1185,6 +1374,41 @@ function renderFirstAppearance(f){
       : `<div class="d-firstapp-desc empty">Registro do primeiro encontro ainda não escrito.</div>`}
   </div>`;
 }
+/* ============================================================
+   RENDER: LEMBRANÇA DO DIA
+   Rotaciona automaticamente: a cada dia do ano, mostra uma frase
+   diferente da lista "lembrancas" do membro (quando a lista acaba,
+   volta pro início). O offset por id evita que todos os perfis
+   troquem para o mesmo índice no mesmo dia.
+============================================================ */
+function dailyIndex(offset, len){
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 0);
+  const dayOfYear = Math.floor((now - start) / 86400000);
+  return (dayOfYear + offset) % len;
+}
+function renderDailyMemory(f){
+  const list = Array.isArray(f.lembrancas) ? f.lembrancas : [];
+  if (!list.length) {
+    return `
+    <div class="d-memory">
+      <div class="d-memory-head">
+        <span class="d-memory-label mono">📅 lembrança do dia</span>
+      </div>
+      <div class="d-memory-text empty">Nenhum registro catalogado ainda. Volte outro dia.</div>
+    </div>`;
+  }
+  const idx = dailyIndex(f.id, list.length);
+  return `
+  <div class="d-memory">
+    <div class="d-memory-head">
+      <span class="d-memory-label mono">📅 lembrança do dia</span>
+      <span class="d-memory-counter">registro ${idx + 1}/${list.length}</span>
+    </div>
+    <div class="d-memory-text">${escapeHtml(list[idx])}</div>
+    <div class="d-memory-footer">amanhã este arquivo revela outra lembrança</div>
+  </div>`;
+}
 function renderCharDetail(){
   const raw = FRIENDS.find(x=>x.id===selectedId);
   const f = raw ? withOverrides(raw) : null;
@@ -1247,6 +1471,7 @@ function renderCharDetail(){
     </div>` : ""}
     ${renderHobbies(f)}
     ${renderFirstAppearance(f)}
+    ${renderDailyMemory(f)}
     <div class="d-cast">
       <div class="d-cast-photo">${actorAvatarHTML(f)}</div>
       <div class="d-cast-info">
@@ -1351,6 +1576,8 @@ function renderAll(){
   renderAchievements();
   renderCharGrid();
   renderCharDetail();
+  renderEggs();
+  renderCards();
 }
 renderRanking();
 renderAll();
