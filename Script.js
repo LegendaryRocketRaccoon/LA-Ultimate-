@@ -438,7 +438,7 @@ if (authResolved && isLoggedIn) {
   renderAll();
 }
 /* ============================================================
-   EASTER EGGS — ÍCONES ESCONDIDOS + CARTAS DE INFÂNCIA
+  EASTER EGGS — ÍCONES ESCONDIDOS + CARTAS COLECIONÁVEIS
    Como funciona:
    - Cada membro abaixo tem um ícone secreto escondido em algum
      canto do site (os pontos de esconderijo são os <span
@@ -449,10 +449,10 @@ if (authResolved && isLoggedIn) {
      quem clicou desbloqueia a carta de infância DAQUELE membro na
      seção 04 — cada usuário tem sua própria coleção (salva no
      Firestore por e-mail).
-   - O admin já enxerga todas as cartas desbloqueadas, pra testar.
+  - O admin já enxerga todas as cartas desbloqueadas, pra testar.
    PLACEHOLDERS PRA VOCÊ TROCAR:
-   - icon: o emoji/símbolo escondido ou o caminho de uma imagem.
-   - childPhoto: caminho da foto de infância (ex: "fotos/crianca_olavo.jpg").
+  - icon: o emoji/símbolo escondido ou o caminho de uma imagem.
+  - childPhoto: caminho da carta de infância (ex: "fotos/crianca_olavo.jpg").
    ESCONDERIJOS ATUAIS (mova os spans no index.html se quiser):
    - Gustavo (0): fim do subtítulo do header
    - Olavo (1): descrição da seção 01 (Lista de Amigos)
@@ -471,11 +471,34 @@ if (authResolved && isLoggedIn) {
 ============================================================ */
 const EASTER_EGGS = [
   { friendId:0, firstName:"Gustavo", icon:"fotos/Raccoon_Goose.png", childPhoto:"fotos/crianca_gustavo.jpeg" },
-  { friendId:1, firstName:"Olavo",   icon:"fotos/Geese.png", childPhoto:"fotos/crianca_olavo.jpeg" },
+  { friendId:1, firstName:"Olavo", icon:"fotos/Geese.png", childPhoto:"fotos/crianca_olavo.jpeg" },
   { friendId:3, firstName:"William", icon:"fotos/capybara.png", childPhoto:"fotos/crianca_william.jpeg" },
-  { friendId:4, firstName:"Lucas",   icon:"fotos/red_panda.png", childPhoto:"fotos/crianca_lucas.jpeg" }
+  { friendId:4, firstName:"Lucas", icon:"fotos/red_panda.png", childPhoto:"fotos/crianca_lucas.jpeg" }
 ];
-let EGG_UNLOCKS = []; // friendIds desbloqueados pelo usuário logado
+const SECRET_CARDS = [
+  { id:"bigbang-1", title:"The Big Bang Hypothesis", photo:"fotos/bigbang_hypothesis_1.jpeg", trigger:"Título da equipe", icon:"🌌" },
+  { id:"bigbang-2", title:"TBBH Livros", photo:"fotos/bigbang_hypothesis_2.jpeg", trigger:"Título da equipe", icon:"⚛️" },
+  { id:"gustavo-questao", title:"Questão", photo:"fotos/gustavo_questao.jpeg", trigger:"ícone da Questão", icon:"❓" },
+  { id:"gustavo-vigilante", title:"Vigilante", photo:"fotos/Vij.jpg", trigger:"ator de Gustavo", icon:"🎬" },
+  { id:"olavo-gustavo", title:"Irmãos", photo:"fotos/olavo_gustavo.jpeg", trigger:"irmãos na bio do Olavo", icon:"🤝" },
+  { id:"gustavo-void", title:"Void", photo:"fotos/void.jpeg", trigger:"escuridão", icon:"🌑" },
+  { id:"gustavo-musica", title:"Spencer Chase", photo:"fotos/rocky.jpeg", trigger:"música na bio do Gustavo", icon:"🎵" },
+  { id:"olavo-musica", title:"Rock", photo:"fotos/Rock.jpeg", trigger:"música na bio do Olavo", icon:"🎶" },
+  { id:"william-musica", title:"Terminator", photo:"fotos/Terminator.jpeg", trigger:"música na bio do William", icon:"🎸" },
+  { id:"olavo-jedi", title:"Jedi", photo:"fotos/olavo_jedi.jpeg", trigger:"ícone secreto do Olavo", icon:"⚔️" },
+  { id:"olavo-redhood", title:"Como Vencer a Timidez com as Mulheres", photo:"fotos/Como Vencer a Timidez com as Mulheres.jpeg", trigger:"ícone secreto do Olavo", icon:"🔴" },
+  { id:"william-secret", title:"William", photo:"fotos/william_posando.jpeg", trigger:"ícone secreto do William", icon:"🕶️" }
+];
+// Cinco cartas novas, separadas das cartas secretas antigas.
+const DRAWING_CARDS = [
+  { id:"drawing-gustavo-robin", title:"Desenho - Olavo", photo:"fotos/Desenho Olavo.jpeg", trigger:"ícone dos desenhos", icon:"🎨" },
+  { id:"drawing-gustavo-questao", title:"Tempestade - Gustavo", photo:"fotos/Tempestade - Gustavo.jpeg", trigger:"ícone dos desenhos", icon:"🎨" },
+  { id:"drawing-olavo-gustavo", title:"Desenho - Gustavo", photo:"fotos/Desenho - Gustavo.jpeg", trigger:"ícone dos desenhos", icon:"🎨" },
+  { id:"drawing-william-lendo", title:"Desenho Personagem Gustavo", photo:"fotos/Desenho Personagem Gustavo.jpeg", trigger:"ícone dos desenhos", icon:"🎨" },
+  { id:"drawing-lucas-dormindo", title:"Desenho para o Thiago", photo:"fotos/Desenho para o Thiago.jpeg", trigger:"ícone dos desenhos", icon:"🎨" }
+];
+const DRAWING_CARD_IDS = DRAWING_CARDS.map(card => card.id);
+let EGG_UNLOCKS = []; // IDs de cartas desbloqueadas pelo usuário logado
 function eggDocRef(email){ return db.collection("eggUnlocks").doc(email.toLowerCase()); }
 function listenEggUnlocks(){
   if (!currentUserEmail) return;
@@ -488,20 +511,36 @@ function listenEggUnlocks(){
 }
 // Admin já tem tudo desbloqueado (pra testar); os demais só o que acharam.
 function isEggUnlocked(friendId){
-  return isAdmin || EGG_UNLOCKS.includes(friendId);
+  return isAdmin || EGG_UNLOCKS.some(id => String(id) === String(friendId));
+}
+function unlockCards(cardIds){
+  if (!currentUserEmail) return;
+  const newIds = cardIds.filter(id => !isEggUnlocked(id));
+  if (!newIds.length) return;
+  const allCards = [...SECRET_CARDS, ...DRAWING_CARDS];
+  const firstCard = allCards.find(item => item.id === newIds[0]);
+  const isDrawingSet = newIds.length > 1 && newIds.every(id => DRAWING_CARD_IDS.includes(id));
+  EGG_UNLOCKS = [...EGG_UNLOCKS, ...newIds];
+  renderEggs();
+  renderCards();
+  updateCardTriggerVisibility();
+  eggDocRef(currentUserEmail).set({
+    unlockedIds: firebase.firestore.FieldValue.arrayUnion(...newIds)
+  }, { merge: true }).catch(err => console.warn("Não foi possível salvar a carta", err));
+  showToast(
+    isDrawingSet ? "🎨" : (firstCard ? firstCard.icon : "🃏"),
+    isDrawingSet ? "5 cartas desbloqueadas" : "carta desbloqueada",
+    isDrawingSet ? "coleção de desenhos" : (firstCard ? firstCard.title : "infância")
+  );
+  if (isDrawingSet) {
+    logActivity("bigbang", "unlocked", "desbloqueou as <b>5 cartas de desenho</b> 🎨");
+  } else {
+    const unlockedTitle = firstCard ? firstCard.title : "carta de infância";
+    logActivity("bigbang", "unlocked", `desbloqueou a carta <b>${unlockedTitle}</b> 🃏`);
+  }
 }
 function unlockEgg(friendId){
-  if (!currentUserEmail) return;
-  if (EGG_UNLOCKS.includes(friendId)) return;
-  const egg = EASTER_EGGS.find(e => e.friendId === friendId);
-  if (!egg) return;
-  eggDocRef(currentUserEmail).set({
-    unlockedIds: firebase.firestore.FieldValue.arrayUnion(friendId)
-  }, { merge: true }).catch(err => console.warn("Não foi possível salvar a carta", err));
-  const friend = FRIENDS.find(f => f.id === friendId);
-  showToast("🃏", "carta desbloqueada", `Infância de ${egg.firstName}`);
-  const team = friend ? (friendTeams(friend)[0] || "bigbang") : "bigbang";
-  logActivity(team, "unlocked", `encontrou o ícone secreto e desbloqueou a carta de <b>${egg.firstName}</b> 🃏`);
+  unlockCards([friendId]);
 }
 // Preenche os spans .hidden-egg do HTML com o ícone de cada membro e
 // liga o clique. Ícones já encontrados ficam permanentemente coloridos.
@@ -515,12 +554,15 @@ function renderEggs(){
     } else {
       el.textContent = egg.icon;
     }
-    el.classList.toggle("found", isEggUnlocked(friendId));
+    const unlocked = isEggUnlocked(friendId);
+    el.classList.toggle("found", unlocked);
+    el.style.display = unlocked ? "none" : "inline-block";
     if (!el.dataset.bound) {
       el.dataset.bound = "1";
       el.addEventListener("click", ()=> unlockEgg(friendId));
     }
   });
+  updateCardTriggerVisibility();
 }
 // Seção 04: galeria de cartas. Bloqueada = verso com "?"; desbloqueada =
 // foto de infância com moldura dourada e brilho de colecionável.
@@ -528,28 +570,102 @@ function renderCards(){
   const grid = document.getElementById("cardsGrid");
   const progress = document.getElementById("cardsProgress");
   if (!grid) return;
-  const unlockedCount = EASTER_EGGS.filter(e => isEggUnlocked(e.friendId)).length;
-  progress.innerHTML = `coleção: <b>${unlockedCount}/${EASTER_EGGS.length}</b> cartas desbloqueadas${isAdmin ? ` <span style="color:var(--yellow)">★ visão de admin — tudo liberado</span>` : ""}`;
-  grid.innerHTML = EASTER_EGGS.map(egg=>{
-    if (isEggUnlocked(egg.friendId)) {
+  const cards = [
+    ...EASTER_EGGS.map(egg => ({ id:egg.friendId, photo:egg.childPhoto, title:`${egg.firstName} quando criança`, owner:egg.firstName, icon:egg.icon })),
+    ...SECRET_CARDS.map(card => ({ ...card, id:card.id, owner:card.trigger })),
+    ...DRAWING_CARDS.map(card => ({ ...card, id:card.id, owner:card.trigger }))
+  ];
+  const unlockedCardCount = cards.filter(card => isEggUnlocked(card.id)).length;
+  progress.innerHTML = `coleção: <b>${unlockedCardCount}/${cards.length}</b> cartas desbloqueadas${isAdmin ? ` <span style="color:var(--yellow)">★ visão de admin — tudo liberado</span>` : ""}`;
+  grid.innerHTML = cards.map(card=>{
+    if (isEggUnlocked(card.id)) {
       return `
       <div class="friend-card unlocked">
         <div class="card-photo">
-          <img src="${egg.childPhoto}" alt="${egg.firstName} quando criança" loading="lazy"
+          <img src="${card.photo}" alt="${card.title}" loading="lazy"
             onerror="this.parentElement.innerHTML='<div class=\\'card-photo-empty\\'>🖼️</div>'">
         </div>
         <div class="card-footer">
-          <div class="card-name">${egg.firstName}</div>
-          <div class="card-edition">edição infância · colecionável</div>
+          <div class="card-name">${card.title}</div>
+          <div class="card-edition">${typeof card.id === "number" ? "edição infância" : "edição ilustrada"} · colecionável</div>
         </div>
       </div>`;
     }
     return `
     <div class="friend-card locked">
       <div class="card-q">?</div>
-      <div class="card-hint">carta bloqueada<br>encontre o ícone escondido de ${egg.firstName}</div>
+      <div class="card-hint">carta bloqueada<br>encontre o ícone para desbloquear esta carta</div>
     </div>`;
   }).join("");
+}
+function cardTrigger(text, ids, className="card-trigger"){
+  const idList = Array.isArray(ids) ? ids.join(",") : ids;
+  return `<span class="${className}" data-unlock="${idList}" role="button" tabindex="0">${text}</span>`;
+}
+function renderBioWithTriggers(f){
+  let bio = f.bio || "";
+  if (f.id === 1) {
+    let hasBrotherTrigger = false;
+    bio = bio.replace(/irmãos?/i, match => {
+      hasBrotherTrigger = true;
+      return cardTrigger(match, "olavo-gustavo");
+    });
+    if (!hasBrotherTrigger) bio += ` ${cardTrigger("irmão", "olavo-gustavo")}`;
+    let hasMusicTrigger = false;
+    bio = bio.replace(/música/gi, match => {
+      hasMusicTrigger = true;
+      return cardTrigger(match, "olavo-musica");
+    });
+    if (!hasMusicTrigger) bio += ` ${cardTrigger("🎵", "olavo-musica", "card-trigger bio-icon-trigger hide-after-unlock")}`;
+  }
+  if (f.id === 3) {
+    let hasMusicTrigger = false;
+    bio = bio.replace(/música/gi, match => {
+      hasMusicTrigger = true;
+      return cardTrigger(match, "william-musica");
+    });
+    if (!hasMusicTrigger) bio += ` ${cardTrigger("🎵", "william-musica", "card-trigger bio-icon-trigger hide-after-unlock")}`;
+  }
+  if (f.id === 0) {
+    let hasMusicTrigger = false;
+    bio = bio.replace(/música/gi, match => {
+      hasMusicTrigger = true;
+      return cardTrigger(match, "gustavo-musica");
+    });
+    if (!hasMusicTrigger) bio += ` ${cardTrigger("🎵", "gustavo-musica", "card-trigger bio-icon-trigger hide-after-unlock")}`;
+    bio += ` ${cardTrigger("🌑", "gustavo-void", "card-trigger void-trigger hide-after-unlock")}`;
+  }
+  return bio;
+}
+function bindCardTriggers(){
+  document.querySelectorAll(".card-trigger").forEach(el=>{
+    if (el.dataset.bound) return;
+    el.dataset.bound = "1";
+    el.addEventListener("click", event=>{
+      event.stopPropagation();
+      unlockCards(el.dataset.unlock.split(","));
+    });
+    el.addEventListener("keydown", event=>{
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        event.stopPropagation();
+        unlockCards(el.dataset.unlock.split(","));
+      }
+    });
+  });
+  updateCardTriggerVisibility();
+}
+function updateCardTriggerVisibility(){
+  document.querySelectorAll("[data-unlock].hide-after-unlock, [data-unlock].persist-after-unlock").forEach(el=>{
+    const unlocked = el.dataset.unlock.split(",").every(id => isEggUnlocked(id));
+    if (unlocked && el.classList.contains("persist-after-unlock")) {
+      el.classList.remove("card-trigger", "persist-after-unlock");
+      el.removeAttribute("data-unlock");
+      el.removeAttribute("title");
+      return;
+    }
+    el.style.display = unlocked ? "none" : "inline-block";
+  });
 }
 /* ============================================================
    TOAST GENÉRICO (conquistas e cartas)
@@ -560,7 +676,9 @@ function showToast(icon, label, title){
   document.getElementById("unlockToastLabel").textContent = label || "conquista mais recente";
   document.getElementById("unlockToastTitle").textContent = title || "—";
   toast.style.display = "none";
+  toast.style.animation = "none";
   void toast.offsetWidth; // reinicia a animação CSS
+  toast.style.animation = "";
   toast.style.display = "flex";
   clearTimeout(showToast._t);
   showToast._t = setTimeout(()=>{ toast.style.display = "none"; }, 6800);
@@ -1218,7 +1336,7 @@ function renderTabs(){
     return `
     <div class="team-tab ${key===activeTeam?"active":""}" data-team="${key}">
       <div class="t-eyebrow">${t.eyebrow}</div>
-      <div class="t-name">${t.name}</div>
+      <div class="t-name ${key === "bigbang" ? "card-trigger persist-after-unlock" : ""}" ${key === "bigbang" ? `data-unlock="bigbang-1,bigbang-2"` : ""}>${t.name}</div>
       <div class="t-meta">
         <span>Membros: <b>${members.length}</b></span>
         ${hasAch ? `<span>Conquistas: <b>${unlocked}/${total}</b></span>` : `<span>Somente informativo</span>`}
@@ -1338,6 +1456,7 @@ function renderCharGrid(){
       selectedId = parseInt(el.dataset.id);
       renderCharGrid();
       renderCharDetail();
+      bindCardTriggers();
     });
   });
 }
@@ -1450,10 +1569,10 @@ function renderCharDetail(){
     </div>
     ${f.id === 1 ? `
       <div class="d-bio-with-goose">
-        <div class="d-bio-text">${f.bio || ""}</div>
+        <div class="d-bio-text">${renderBioWithTriggers(f)}</div>
         <div class="goose-bio-icon"><img src="fotos/Goose.png" alt="Goose" loading="lazy"></div>
       </div>
-    ` : `<div class="d-bio">${f.bio || ""}</div>`}
+    ` : `<div class="d-bio">${renderBioWithTriggers(f)}</div>`}
     ${f.quote ? `<div class="d-quote">${f.quote}</div>` : ""}
     ${(f.qualidades || f.defeitos) ? `
     <div class="d-traits">
@@ -1473,7 +1592,7 @@ function renderCharDetail(){
     ${renderFirstAppearance(f)}
     ${renderDailyMemory(f)}
     <div class="d-cast">
-      <div class="d-cast-photo">${actorAvatarHTML(f)}</div>
+      <div class="d-cast-photo ${f.id === 0 ? "card-trigger" : ""}" ${f.id === 0 ? `data-unlock="gustavo-vigilante"` : ""}>${actorAvatarHTML(f)}</div>
       <div class="d-cast-info">
         <div class="d-cast-label mono">🎬 se fosse adaptado — ator escalado</div>
         <div class="d-cast-name">${f.actorName ? escapeHtml(f.actorName) : "Elenco ainda não definido"}</div>
@@ -1578,6 +1697,7 @@ function renderAll(){
   renderCharDetail();
   renderEggs();
   renderCards();
+  bindCardTriggers();
 }
 renderRanking();
 renderAll();
