@@ -221,7 +221,9 @@ let FRIENDS = [
       "A música favorita do Olavo é Jigsaw Falling Into Place de Radiohead.",
       "Olavo gosta de gansos e patos.",
       "O personagem favorito do Olavo é o Hellboy.",
-      "Primeiro contato entre Olavo e Gustavo foi no dia 22/08/2024."
+      "Primeiro contato entre Olavo e Gustavo foi no dia 22/08/2024.",
+      "Olavo atende pelos codinomes The True Gamer, AppleJuice e Cream Boy.",
+      "O jogo favorito do Olavo é Disco Elysium."
     ],
     neuro:{status:"possivel", detalhes:"TDA e/ou Altas Habilidades"},
     accent:"#ffcc00",
@@ -258,7 +260,9 @@ let FRIENDS = [
       "A música favorita do William é Still Loving You de Scorpions.",
       "Curiosidade: William gosta de Lady Gaga.",
       "Amanda e William começaram a namorar dia 10/03/2025.",
-      "William já foi campeão de Xadrez."
+      "William já foi campeão de Xadrez.",
+      "William ganhou vários trofeus no futebol.",
+      "William provavelmente é o membro mais humano da equipe."
     ],
     accent:"#3d3c3c",
     photo:"fotos/william.jpeg",
@@ -278,7 +282,9 @@ let FRIENDS = [
     lembrancas:[
       "O jogo favorito do Lucas é Clair Obscure Expedition 33.",
       "A série favorita do Lucas é Gravity Falls.",
-      //"No dia __/__, Lucas realizou ______."
+      "Lucas é o membro mais alto da equipe: 1,89 de altura.",
+      "Lucas faz origami, e não é uma ideia estereotipada, ele realmente faz.",
+      "Lucas gosta mais de músicas orquestradas do que de músicas com letra, como de jogos.",
     ],
     accent:"#3dc015",
     photo:"",
@@ -336,7 +342,11 @@ let FRIENDS = [
     defeitos:["Preocupada","Emocional"],
     hobbies:[],
     firstAppearance:{ quando:"2ª Temporada", descricao:"Os primeiros contatos ocorreram quando eu a acompanhava com o William. Depois que ele concluiu seu arco tentando namorá-la, ela passou a integrar a equipe." },
-    lembrancas:["Amanda e William começaram a namorar dia 10/03/2025."],
+    lembrancas:[
+      "Amanda e William começaram a namorar dia 10/03/2025.",
+      "Amanda entrou oficialmente na equipe na 2ª Temporada.",
+      "Amanda gosta de vermelho.",
+    ],
     accent:"#aa2800",
     photo:"",
     actorPhoto:"", actorName:""
@@ -387,6 +397,8 @@ let FRIENDS = [
       "Gustavo já foi medalhista de ouro na OBA (Olimpíada Brasileira de Astronomia e Astronáutica).",
       "Gustavo recebeu menção honrosa na ONC (Olimpíada Nacional de Ciências).",
       "Os personagens favoritos do Gustavo são o Senhor Destino e o Questão.",
+      "Gustavo gosta de guaxinins.",
+      "Gustavo prefere músicas orquestradas a músicas com letra, embora também goste de rock, jazz, e algumas outras vertentes.",
     ],
     neuro:{status:"confirmada", detalhes:"Autismo e Altas Habilidades"},
     accent:"#2be0c8",
@@ -449,7 +461,9 @@ if (authResolved && isLoggedIn) {
      quem clicou desbloqueia a carta de infância DAQUELE membro na
      seção 04 — cada usuário tem sua própria coleção (salva no
      Firestore por e-mail).
-  - O admin já enxerga todas as cartas desbloqueadas, pra testar.
+  - O admin já enxerga todas as cartas desbloqueadas, pra testar
+    (por isso os ícones somem da visão do admin — pra ver os
+    esconderijos como um usuário comum, logue com a conta Rocket).
    PLACEHOLDERS PRA VOCÊ TROCAR:
   - icon: o emoji/símbolo escondido ou o caminho de uma imagem.
   - childPhoto: caminho da carta de infância (ex: "fotos/crianca_olavo.jpg").
@@ -543,7 +557,8 @@ function unlockEgg(friendId){
   unlockCards([friendId]);
 }
 // Preenche os spans .hidden-egg do HTML com o ícone de cada membro e
-// liga o clique. Ícones já encontrados ficam permanentemente coloridos.
+// liga o clique. Ícones já encontrados somem da página (a carta fica
+// registrada na seção 04).
 function renderEggs(){
   document.querySelectorAll(".hidden-egg").forEach(el=>{
     const friendId = parseInt(el.dataset.egg);
@@ -565,7 +580,7 @@ function renderEggs(){
   updateCardTriggerVisibility();
 }
 // Seção 04: galeria de cartas. Bloqueada = verso com "?"; desbloqueada =
-// foto de infância com moldura dourada e brilho de colecionável.
+// foto com moldura dourada e brilho de colecionável.
 function renderCards(){
   const grid = document.getElementById("cardsGrid");
   const progress = document.getElementById("cardsProgress");
@@ -637,22 +652,32 @@ function renderBioWithTriggers(f){
   }
   return bio;
 }
+/* ============================================================
+   GATILHOS DE CARTA — POR DELEGAÇÃO DE EVENTO
+   Um listener único no document, ligado UMA vez. Como ele escuta
+   qualquer clique que "borbulha" até o topo, continua funcionando
+   mesmo quando o conteúdo é re-renderizado pelos snapshots do
+   Firestore (perfis, overrides, conquistas) — que era o que matava
+   os listeners individuais de antes. Obs: sem stopPropagation, um
+   clique no título da equipe desbloqueia as cartas E seleciona a
+   aba ao mesmo tempo, que é o comportamento desejado.
+============================================================ */
+document.addEventListener("click", (event)=>{
+  const el = event.target.closest(".card-trigger[data-unlock]");
+  if (!el) return;
+  unlockCards(el.dataset.unlock.split(","));
+});
+document.addEventListener("keydown", (event)=>{
+  if (event.key !== "Enter" && event.key !== " ") return;
+  const el = event.target.closest(".card-trigger[data-unlock]");
+  if (!el) return;
+  event.preventDefault();
+  unlockCards(el.dataset.unlock.split(","));
+});
 function bindCardTriggers(){
-  document.querySelectorAll(".card-trigger").forEach(el=>{
-    if (el.dataset.bound) return;
-    el.dataset.bound = "1";
-    el.addEventListener("click", event=>{
-      event.stopPropagation();
-      unlockCards(el.dataset.unlock.split(","));
-    });
-    el.addEventListener("keydown", event=>{
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        event.stopPropagation();
-        unlockCards(el.dataset.unlock.split(","));
-      }
-    });
-  });
+  // Os cliques agora são tratados por delegação (acima). Esta função
+  // fica mantida só pra atualizar a visibilidade dos gatilhos nos
+  // pontos do código que já a chamavam.
   updateCardTriggerVisibility();
 }
 function updateCardTriggerVisibility(){
@@ -696,7 +721,7 @@ function showToast(icon, label, title){
        match /achievements/{team} {
          allow read: if request.auth != null &&
            request.auth.token.email in
-           ['chimellogustavo17@gmail.com','olavoxavier038@gmail.com','williamfurquim@hotmail.com','oimperiocontraataca7@gmail.com','lumimiyaki@gmail.com','amandajaguella@gmail.com'];
+           ['chimellogustavo17@gmail.com','olavoxavier038@gmail.com','williamfurquim@hotmail.com','oimperiocontraataca7@gmail.com','lumimiyaki@gmail.com','amandajaguella@gmail.com','eduardatonet25@gmail.com'];
          allow write: if request.auth != null &&
            request.auth.token.email == 'chimellogustavo17@gmail.com';
        }
@@ -890,14 +915,11 @@ function notifyUnlock(team, achievement){
    Coleção "activity": um documento por evento, mais recentes primeiro.
    REGRA DO FIRESTORE (adicione junto das outras):
    match /activity/{doc} {
-     allow read: if request.auth != null &&
+     allow read, create: if request.auth != null &&
        request.auth.token.email in
        ['chimellogustavo17@gmail.com','olavoxavier038@gmail.com',
-        'williamfurquim@hotmail.com','oimperiocontraataca7@gmail.com','lumimiyaki@gmail.com','amandajaguella@gmail.com'];
-     allow create: if request.auth != null &&
-       request.auth.token.email in
-       ['chimellogustavo17@gmail.com','olavoxavier038@gmail.com',
-        'williamfurquim@hotmail.com','oimperiocontraataca7@gmail.com','lumimiyaki@gmail.com','amandajaguella@gmail.com'];
+        'williamfurquim@hotmail.com','oimperiocontraataca7@gmail.com',
+        'lumimiyaki@gmail.com','amandajaguella@gmail.com','eduardatonet25@gmail.com'];
      allow update, delete: if false;
    }
 ============================================================ */
@@ -939,14 +961,11 @@ function listenActivity(){
    Coleção "suggestions", um documento por equipe (igual achievements).
    REGRA DO FIRESTORE (adicione junto das outras):
    match /suggestions/{team} {
-     allow read: if request.auth != null &&
+     allow read, write: if request.auth != null &&
        request.auth.token.email in
        ['chimellogustavo17@gmail.com','olavoxavier038@gmail.com',
-        'williamfurquim@hotmail.com','oimperiocontraataca7@gmail.com','lumimiyaki@gmail.com','amandajaguella@gmail.com'];
-     allow write: if request.auth != null &&
-       request.auth.token.email in
-       ['chimellogustavo17@gmail.com','olavoxavier038@gmail.com',
-        'williamfurquim@hotmail.com','oimperiocontraataca7@gmail.com','lumimiyaki@gmail.com','amandajaguella@gmail.com'];
+        'williamfurquim@hotmail.com','oimperiocontraataca7@gmail.com',
+        'lumimiyaki@gmail.com','amandajaguella@gmail.com','eduardatonet25@gmail.com'];
    }
    (Aqui deixamos todo mundo autorizado escrever, porque tanto enviar
    sugestão quanto aprovar/rejeitar são ações legítimas de qualquer
@@ -1060,14 +1079,16 @@ function maybeShowLastUnlockToast(){
 /* ============================================================
    PERFIS DE USUÁRIO (foto de perfil)
    Guardadas no Firestore, coleção "profiles", um documento por
-   e-mail (não por uid, assim qualquer um dos 3 logins consegue
-   ler a foto de qualquer um dos outros dois e mostrar na bio).
+   e-mail (não por uid, assim qualquer login autorizado consegue
+   ler a foto dos demais e mostrar na bio).
    REGRAS ADICIONAIS DO FIRESTORE (junte com as de "achievements"
    no mesmo arquivo de regras):
    match /profiles/{email} {
      allow read: if request.auth != null &&
        request.auth.token.email in
-       ['chimellogustavo17@gmail.com','olavoxavier038@gmail.com','williamfurquim@hotmail.com','oimperiocontraataca7@gmail.com','lumimiyaki@gmail.com','amandajaguella@gmail.com'];
+       ['chimellogustavo17@gmail.com','olavoxavier038@gmail.com',
+        'williamfurquim@hotmail.com','oimperiocontraataca7@gmail.com',
+        'lumimiyaki@gmail.com','amandajaguella@gmail.com','eduardatonet25@gmail.com'];
      allow write: if request.auth != null && request.auth.token.email == email;
    }
 ============================================================ */
@@ -1174,7 +1195,8 @@ document.getElementById("profilePhotoInput").addEventListener("change", async (e
      allow read: if request.auth != null &&
        request.auth.token.email in
        ['chimellogustavo17@gmail.com','olavoxavier038@gmail.com',
-        'williamfurquim@hotmail.com','oimperiocontraataca7@gmail.com','lumimiyaki@gmail.com','amandajaguella@gmail.com'];
+        'williamfurquim@hotmail.com','oimperiocontraataca7@gmail.com',
+        'lumimiyaki@gmail.com','amandajaguella@gmail.com','eduardatonet25@gmail.com'];
      allow write: if request.auth != null &&
        request.auth.token.email == 'chimellogustavo17@gmail.com';
    }
@@ -1349,6 +1371,7 @@ function renderTabs(){
       renderAll();
     });
   });
+  updateCardTriggerVisibility();
 }
 /* ============================================================
    RENDER: ACHIEVEMENTS
@@ -1456,7 +1479,6 @@ function renderCharGrid(){
       selectedId = parseInt(el.dataset.id);
       renderCharGrid();
       renderCharDetail();
-      bindCardTriggers();
     });
   });
 }
@@ -1686,6 +1708,7 @@ function renderCharDetail(){
       }
     });
   }
+  updateCardTriggerVisibility();
 }
 /* ============================================================
    BOOT
@@ -1697,7 +1720,7 @@ function renderAll(){
   renderCharDetail();
   renderEggs();
   renderCards();
-  bindCardTriggers();
+  updateCardTriggerVisibility();
 }
 renderRanking();
 renderAll();
